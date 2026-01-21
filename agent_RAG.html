@@ -1,28 +1,60 @@
 
-<script>
-  const url = "https://sonicbzh.app.n8n.cloud/webhook/total-chat"; // PROD URL
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Assistant Alan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+    h2 { margin-bottom: 8px; }
+    textarea { width: 100%; min-height: 120px; font-size: 16px; }
+    button { margin-top: 10px; padding: 10px 16px; font-size: 15px; cursor: pointer; }
+    pre { white-space: pre-wrap; background: #f4f4f4; padding: 14px; border-radius: 6px; min-height: 40px; }
+    .muted { color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h2>Assistant RAG – Alan</h2>
+  <p class="muted">Pose une question, par ex. « Comment Alan H est habillé ? »</p>
 
-  async function send() {
-    const question = document.getElementById('q').value.trim();
-    if (!question) return;
+  <textarea id="q" placeholder="Écris ta question ici…"></textarea><br />
+  <button id="btn" onclick="send()">Envoyer</button>
 
-    // On utilise x-www-form-urlencoded pour éviter le preflight CORS
-    const body = new URLSearchParams({ question });
+  <h3>Réponse :</h3>
+  <pre id="out"></pre>
 
-    // Pas d'en-tête 'Content-Type: application/json' => pas de preflight
-    const res = await fetch(url, {
-      method: "POST",
-      body
-    });
+  <script>
+    const url = "https://sonicbzh.app.n8n.cloud/webhook/total-chat"; // PROD URL n8n
 
-    // Essaie de lire du texte d'abord (selon comment tu réponds côté n8n)
-    let text;
-    try {
-      text = await res.text();
-    } catch (e) {
-      text = "Erreur en lisant la réponse";
+    async function send() {
+      const qEl  = document.getElementById('q');
+      const out  = document.getElementById('out');
+      const btn  = document.getElementById('btn');
+
+      const question = qEl.value.trim();
+      if (!question) return;
+
+      btn.disabled = true;
+      const old = btn.textContent;
+      btn.textContent = "Envoi…";
+      out.textContent = "";
+
+      try {
+        // Pas de Content-Type explicite -> le navigateur mettra x-www-form-urlencoded
+        const body = new URLSearchParams({ question });
+        const res  = await fetch(url, { method: "POST", body });
+
+        // Essaie d'abord en texte (selon ta conf Respond to Webhook)
+        const text = await res.text();
+        out.textContent = text || "(réponse vide)";
+      } catch (e) {
+        out.textContent = "Erreur d’appel : " + (e?.message || e);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = old;
+      }
     }
-    document.getElementById('out').textContent = text || "(réponse vide)";
-  }
-</script>
-``
+  </script>
+</body>
+</html>
