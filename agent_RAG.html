@@ -1,37 +1,28 @@
 
-<!DOCTYPE html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8">
-    <title>Assistant Alan</title>
-    <style>
-      body { font-family: Arial; max-width: 600px; margin: 40px auto; }
-      textarea { width: 100%; height: 100px; }
-      pre { white-space: pre-wrap; background: #f4f4f4; padding: 15px; border-radius: 5px; }
-    </style>
-  </head>
-  <body>
-    <h2>Assistant RAG – Alan</h2>
-    <textarea id="q" placeholder="Pose ta question ici..."></textarea>
-    <br><br>
-    <button onclick="send()">Envoyer</button>
+<script>
+  const url = "https://sonicbzh.app.n8n.cloud/webhook/total-chat"; // PROD URL
 
-    <h3>Réponse :</h3>
-    <pre id="out"></pre>
+  async function send() {
+    const question = document.getElementById('q').value.trim();
+    if (!question) return;
 
-    <script>
-      const url = "https://sonicbzh.app.n8n.cloud/webhook/total-chat"; // ← PROD URL
+    // On utilise x-www-form-urlencoded pour éviter le preflight CORS
+    const body = new URLSearchParams({ question });
 
-      async function send() {
-        const question = document.getElementById('q').value;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question })
-        });
-        const text = await res.text();
-        document.getElementById('out').textContent = text;
-      }
-    </script>
-  </body>
-</html>
+    // Pas d'en-tête 'Content-Type: application/json' => pas de preflight
+    const res = await fetch(url, {
+      method: "POST",
+      body
+    });
+
+    // Essaie de lire du texte d'abord (selon comment tu réponds côté n8n)
+    let text;
+    try {
+      text = await res.text();
+    } catch (e) {
+      text = "Erreur en lisant la réponse";
+    }
+    document.getElementById('out').textContent = text || "(réponse vide)";
+  }
+</script>
+``
