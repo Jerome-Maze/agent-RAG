@@ -2,59 +2,59 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Assistant Alan</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Assistant Total</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
-    h2 { margin-bottom: 8px; }
-    textarea { width: 100%; min-height: 120px; font-size: 16px; }
-    button { margin-top: 10px; padding: 10px 16px; font-size: 15px; cursor: pointer; }
-    pre { white-space: pre-wrap; background: #f4f4f4; padding: 14px; border-radius: 6px; min-height: 40px; }
-    .muted { color: #666; font-size: 13px; }
+    body { font-family: Arial; max-width: 600px; margin: 40px auto; }
+    textarea { width: 100%; height: 100px; }
+    pre { white-space: pre-wrap; background: #f4f4f4; padding: 15px; border-radius: 5px; }
   </style>
 </head>
 <body>
   <h2>Assistant RAG – Alan</h2>
-  <p class="muted">Pose une question, par ex. « Comment Alan H est habillé ? »</p>
-
-  <textarea id="q" placeholder="Écris ta question ici…"></textarea><br />
-  <button id="btn" onclick="send()">Envoyer</button>
-
+  <textarea id="q" placeholder="Pose ta question sur Alan H ici..."></textarea>
+  <br><br>
+  <button onclick="send()">Envoyer</button>
   <h3>Réponse :</h3>
   <pre id="out"></pre>
 
   <script>
-    const url = "https://sonicbzh.app.n8n.cloud/webhook/total-chat"; // PROD URL n8n
+    // ---- URL du webhook n8n (production)
+    const url = "https://sonicbzh.app.n8n.cloud/webhook/total-chat";
+
+    // ---- SessionId persistant côté navigateur
+    function getSessionId() {
+      let sid = localStorage.getItem("agent_rag_sessionId");
+      if (!sid) {
+        sid = crypto?.randomUUID ? crypto.randomUUID() : "sid-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+        localStorage.setItem("agent_rag_sessionId", sid);
+      }
+      return sid;
+    }
 
     async function send() {
-      const qEl  = document.getElementById('q');
-      const out  = document.getElementById('out');
-      const btn  = document.getElementById('btn');
+      const sessionId = getSessionId();
+      const message = document.getElementById('q').value;
 
-      const question = qEl.value.trim();
-      if (!question) return;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, message })    // <-- IMPORTANT
+      });
 
-      btn.disabled = true;
-      const old = btn.textContent;
-      btn.textContent = "Envoi…";
-      out.textContent = "";
-
-      try {
-        // Pas de Content-Type explicite -> le navigateur mettra x-www-form-urlencoded
-        const body = new URLSearchParams({ question });
-        const res  = await fetch(url, { method: "POST", body });
-
-        // Essaie d'abord en texte (selon ta conf Respond to Webhook)
-        const text = await res.text();
-        out.textContent = text || "(réponse vide)";
-      } catch (e) {
-        out.textContent = "Erreur d’appel : " + (e?.message || e);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = old;
+      // On accepte texte ou JSON (au cas où tu renvoies un objet)
+      const contentType = res.headers.get("content-type") || "";
+      let text;
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        text = data.reply ?? JSON.stringify(data, null, 2);
+      } else {
+        text = await res.text();
       }
+
+      document.getElementById('out').textContent = text;
     }
   </script>
 </body>
 </html>
+
